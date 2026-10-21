@@ -1,0 +1,115 @@
+@import "tailwindcss";
+
+:root {
+  --background: #05070d;
+  --foreground: #e8edf7;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  /* 青 and 黄 are the two players; cyan-white is the light of the wires. */
+  --color-blue: #4cc9ff;
+  --color-blue-dim: #1f6f9a;
+  --color-yellow: #ffd23f;
+  --color-yellow-dim: #8f7414;
+  --color-wire: #8b95a8;
+  --color-glow: #c9f3ff;
+  --color-panel: #0d1220;
+  --color-ink: #e8edf7;
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background:
+    radial-gradient(ellipse at 20% 0%, rgba(76, 201, 255, 0.1), transparent 55%),
+    radial-gradient(ellipse at 80% 100%, rgba(255, 210, 63, 0.07), transparent 55%),
+    var(--background);
+  background-attachment: fixed;
+  color: var(--foreground);
+}
+
+/* Something new on screen pops in. */
+@keyframes tr-pop {
+  0% {
+    transform: scale(0.92);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.tr-pop {
+  animation: tr-pop 0.3s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+
+/* A circuit closing: wires light up, triangles flash, then everything fades out. */
+@keyframes tr-current {
+  0% {
+    stroke-dashoffset: 1;
+    opacity: 1;
+  }
+  35% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 0;
+  }
+}
+.tr-current {
+  stroke-dasharray: 1;
+  animation: tr-current 2.4s ease-out both;
+}
+@keyframes tr-flash {
+  0%,
+  25% {
+    opacity: 0;
+  }
+  40% {
+    opacity: 0.85;
+  }
+  70% {
+    opacity: 0.55;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.tr-flash {
+  animation: tr-flash 2.4s ease-out both;
+}
+@keyframes tr-vanish {
+  0%,
+  35% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.4);
+  }
+}
+.tr-vanish {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: tr-vanish 2.4s ease-in both;
+}
+@keyframes tr-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.tr-breathe {
+  animation: tr-breathe 1.6s ease-in-out infinite;
+}
