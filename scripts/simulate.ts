@@ -1,6 +1,6 @@
 // Checks the circuit rules on small hand-made boards, then plays CPU-only games and prints statistics.
 import assert from "node:assert/strict";
-import { checkLine, energizedLines, energizedTriangles, runCircuit, type Board, type Point } from "../lib/board";
+import { checkLine, checkMove, energizedLines, energizedTriangles, runCircuit, type Board, type Point } from "../lib/board";
 import { addBot, botAct, createRoom, pendingBot, startGame, updateSettings, viewFor } from "../lib/gameEngine";
 import type { DotCount } from "../lib/types";
 
@@ -89,6 +89,24 @@ const B = [
   assert.equal(checkLine(c, 4, 5).ok, false, "jumps over (500,500)");
   assert.equal(checkLine(c, 4, 7).ok, true);
 }
+{
+  // Closing a circuit with no triangle is not allowed, for either player's circuit.
+  const b = board(B, [[0, 4]]);
+  assert.equal(checkMove(b, 0, 4, 2).ok, false, "blue's own empty circuit");
+  assert.equal(checkMove(b, 1, 4, 2).ok, false, "closes blue's empty circuit on yellow's turn");
+  // With a triangle on the route it is fine.
+  const t = board(
+    [...B, [500, 650]],
+    [
+      [0, 4],
+      [4, 5],
+      [4, 7],
+      [7, 5],
+    ]
+  );
+  assert.equal(checkMove(t, 0, 5, 2).ok, true);
+  assert.equal(checkMove(t, 1, 5, 2).ok, true);
+}
 console.log("ルール確認: OK");
 
 // ---------- CPU games ----------
@@ -103,7 +121,6 @@ for (const dots of [20, 30, 40] as DotCount[]) {
   let maxCircuit = 0;
   let firstWins = 0;
   let draws = 0;
-  let repeats = 0;
   let margin = 0;
   let ms = 0;
   for (let g = 0; g < GAMES; g++) {
@@ -132,7 +149,6 @@ for (const dots of [20, 30, 40] as DotCount[]) {
     ms += Date.now() - t0;
     viewFor(room);
     moves += room.moves;
-    if (room.endReason === "repeat") repeats++;
     const [blue, yellow] = room.seats.map((id) => room.players.find((p) => p.id === id)!.score);
     if (blue > yellow) firstWins++;
     else if (blue === yellow) draws++;
@@ -142,8 +158,7 @@ for (const dots of [20, 30, 40] as DotCount[]) {
   const f = (n: number) => (n / GAMES).toFixed(1);
   console.log(
     `点${dots}: 手数 ${f(moves)} / 通電 ${f(circuits)}回 / 合計点 ${f(points)} / 点差 ${f(margin)} / ` +
-      `先手(青)勝率 ${((firstWins / GAMES) * 100).toFixed(0)}% 引分 ${((draws / GAMES) * 100).toFixed(0)}% / ` +
-      `繰り返し終了 ${repeats}局`
+      `先手(青)勝率 ${((firstWins / GAMES) * 100).toFixed(0)}% 引分 ${((draws / GAMES) * 100).toFixed(0)}%`
   );
   console.log(
     `        うち0点の通電 ${f(zero)}回 / 相手の線で通電 ${f(byOpponent)}回 / 1回の最高点 ${maxCircuit} / ` +

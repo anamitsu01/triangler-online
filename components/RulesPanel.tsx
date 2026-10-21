@@ -29,15 +29,16 @@ export function RulesContent({ className = "" }: { className?: string }) {
       <p>
         <b className="text-ink">通電のあと</b>: 得点した三角形の<b className="text-ink">辺と角の点</b>が消える(消えた点につながる線も消える)。
         さらに回路をつないだ<b className="text-ink">最後の線</b>も消えるので、回路はまた切れる。それ以外の線は残る。
-        三角形がない回路は、最後の線だけが消えて0点。
+      </p>
+      <p>
+        <b className="text-ink">三角形のない回路</b>: 三角形が1つもない回路(自分のものでも相手のものでも)をつなぐ線は引けない。
       </p>
       <p>
         <b className="text-ink">相手の線でつながったら</b>: 判定するのは線を引いた人の回路だけ。相手の線で自分の回路がつながった場合は、
         <b className="text-ink">自分の番のはじめ</b>に通電する(その線が消える)。そのあと普通に1本引ける。
       </p>
       <p>
-        <b className="text-ink">終了</b>: 引ける線がなくなったら終わり。同じ盤面がくり返されたとき(0点の通電が続いて何も変わらないとき)も終わり。
-        得点の多い人の勝ち。
+        <b className="text-ink">終了</b>: 手番の人が引ける線がなくなったら終わり。得点の多い人の勝ち。
       </p>
     </div>
   );

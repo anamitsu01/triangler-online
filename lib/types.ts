@@ -35,8 +35,6 @@ export interface CircuitEvent {
   lastLine: Line;
 }
 
-export type EndReason = "noLines" | "repeat";
-
 export interface RoomState {
   code: string;
   /** CPU room: opened from the home screen or with TEST_ROOM_CODE; the host plays against a bot. */
@@ -56,9 +54,6 @@ export interface RoomState {
   lastLine: number | null;
   events: CircuitEvent[];
   eventSeq: number;
-  /** Positions seen this game (board + whose turn); a repeat ends the game. */
-  seen: Set<string>;
-  endReason: EndReason | null;
   createdAt: number;
 }
 
@@ -88,7 +83,6 @@ export interface ClientRoom {
   lastLine: number | null;
   /** Recent circuits, newest last. */
   events: CircuitEvent[];
-  endReason: EndReason | null;
 }
 
 /** Entering this room code opens a fresh private room against the CPU. */

@@ -1,10 +1,9 @@
 import {
-  checkLine,
+  checkMove,
   cloneBoard,
   generateBoard,
   hasLegalLine,
   legalLines,
-  positionKey,
   runCircuit,
   TERMINALS,
   type Board,
@@ -63,8 +62,6 @@ export function createRoom(hostId: string, name: string, isTest = false): RoomSt
     lastLine: null,
     events: [],
     eventSeq: 0,
-    seen: new Set(),
-    endReason: null,
     createdAt: Date.now(),
   };
 }
@@ -129,8 +126,6 @@ export function startGame(room: RoomState, hostId: string): RoomState {
   room.moves = 0;
   room.lastLine = null;
   room.events = [];
-  room.seen = new Set([positionKey(room.board, 0)]);
-  room.endReason = null;
   return room;
 }
 
@@ -177,7 +172,7 @@ function record(room: RoomState, result: CircuitResult, cause: "self" | "opponen
 export function drawLine(room: RoomState, playerId: string, a: number, b: number): RoomState {
   requirePlaying(room);
   if (seatOf(room, playerId) !== room.turn) throw new GameError("あなたの番ではありません");
-  const check = checkLine(room.board, a, b);
+  const check = checkMove(room.board, room.turn, a, b);
   if (!check.ok) throw new GameError(check.reason);
 
   const id = room.board.nextLineId++;
@@ -198,8 +193,10 @@ export function drawLine(room: RoomState, playerId: string, a: number, b: number
 /**
  * Passes the turn. If the line just drawn closed the next player's circuit, it
  * runs now, at the start of their turn (the closing line is removed with it);
- * they then draw as usual. The game ends when no line can be drawn, or when a
- * position repeats (nothing can change any more).
+ * they then draw as usual. The game ends when the next player has no line to draw.
+ *
+ * Every move either leaves a line on the board or scores (removing points), and a
+ * line that would close an empty circuit is not allowed, so the game always ends.
  */
 function endTurn(room: RoomState): void {
   room.turn = room.turn === 0 ? 1 : 0;
@@ -210,25 +207,14 @@ function endTurn(room: RoomState): void {
       room.lastLine = null;
     }
   }
-  if (!hasLegalLine(room.board)) {
-    room.phase = "gameover";
-    room.endReason = "noLines";
-    return;
-  }
-  const key = positionKey(room.board, room.turn);
-  if (room.seen.has(key)) {
-    room.phase = "gameover";
-    room.endReason = "repeat";
-    return;
-  }
-  room.seen.add(key);
+  if (!hasLegalLine(room.board, room.turn)) room.phase = "gameover";
 }
 
 /** Host plays a random line for a player who is away. */
 export function hostSkip(room: RoomState, hostId: string): RoomState {
   requireHost(room, hostId);
   requirePlaying(room);
-  const lines = legalLines(room.board);
+  const lines = legalLines(room.board, room.turn);
   const [a, b] = lines[randInt(lines.length)];
   return drawLine(room, room.seats[room.turn], a, b);
 }
@@ -257,7 +243,6 @@ export function viewFor(room: RoomState): ClientRoom {
     moves: room.moves,
     lastLine: room.lastLine,
     events: room.events,
-    endReason: room.endReason,
   };
 }
 
@@ -293,7 +278,7 @@ function network(board: Board, seat: Seat): Set<number> {
 export function chooseBotLine(board: Board, seat: Seat): [number, number] {
   const other: Seat = seat === 0 ? 1 : 0;
   const mine = network(board, seat);
-  const lines = legalLines(board);
+  const lines = legalLines(board, seat);
   let best = lines[0];
   let bestScore = -Infinity;
   for (const [a, b] of lines) {
@@ -303,10 +288,10 @@ export function chooseBotLine(board: Board, seat: Seat): [number, number] {
     let score: number;
     const own = runCircuit(trial, seat, id);
     if (own) {
-      score = own.triangles.length ? own.triangles.length * 10 : -2;
+      score = own.triangles.length * 10;
     } else {
       const theirs = runCircuit(trial, other, id);
-      score = theirs ? -10 * theirs.triangles.length - 0.5 : 0;
+      score = theirs ? -10 * theirs.triangles.length : 0;
       // Building: new triangles, and growing out from its own terminals.
       const touching = (u: number) => board.lines.filter((l) => l.a === u || l.b === u).map((l) => (l.a === u ? l.b : l.a));
       const na = new Set(touching(a));

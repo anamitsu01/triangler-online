@@ -130,28 +130,51 @@ export function checkLine(board: Board, a: number, b: number): LineCheck {
   return { ok: true };
 }
 
-/** Every point that can still be joined to `a`. */
-export function legalPartners(board: Board, a: number): number[] {
-  return board.points.filter((p) => p.alive && p.id !== a && checkLine(board, a, p.id).ok).map((p) => p.id);
+/**
+ * Whether `seat` may draw a line between a and b now: the line must be geometrically
+ * allowed, and it must not close a circuit with no triangle in it. The mover's own
+ * circuit is checked first (it takes priority); otherwise the opponent's, which would
+ * run at the start of their turn.
+ */
+export function checkMove(board: Board, seat: Seat, a: number, b: number): LineCheck {
+  const check = checkLine(board, a, b);
+  if (!check.ok) return check;
+  board.lines.push({ id: -2, a, b });
+  try {
+    for (const s of [seat, seat === 0 ? 1 : 0] as Seat[]) {
+      const energized = energizedLines(board, s);
+      if (!energized.size) continue;
+      if (energizedTriangles(board, energized).length) return { ok: true };
+      return { ok: false, reason: "三角形のない回路はつなげません" };
+    }
+    return { ok: true };
+  } finally {
+    board.lines.pop();
+  }
 }
 
-/** Every legal line on the board, as [a, b] with a < b. */
-export function legalLines(board: Board): [number, number][] {
+/** Every point `seat` can join to `a` now. */
+export function legalPartners(board: Board, seat: Seat, a: number): number[] {
+  return board.points.filter((p) => p.alive && p.id !== a && checkMove(board, seat, a, p.id).ok).map((p) => p.id);
+}
+
+/** Every line `seat` can draw now, as [a, b] with a < b. */
+export function legalLines(board: Board, seat: Seat): [number, number][] {
   const alive = board.points.filter((p) => p.alive);
   const out: [number, number][] = [];
   for (let i = 0; i < alive.length; i++) {
     for (let j = i + 1; j < alive.length; j++) {
-      if (checkLine(board, alive[i].id, alive[j].id).ok) out.push([alive[i].id, alive[j].id]);
+      if (checkMove(board, seat, alive[i].id, alive[j].id).ok) out.push([alive[i].id, alive[j].id]);
     }
   }
   return out;
 }
 
-export function hasLegalLine(board: Board): boolean {
+export function hasLegalLine(board: Board, seat: Seat): boolean {
   const alive = board.points.filter((p) => p.alive);
   for (let i = 0; i < alive.length; i++) {
     for (let j = i + 1; j < alive.length; j++) {
-      if (checkLine(board, alive[i].id, alive[j].id).ok) return true;
+      if (checkMove(board, seat, alive[i].id, alive[j].id).ok) return true;
     }
   }
   return false;
@@ -293,11 +316,4 @@ export function runCircuit(board: Board, seat: Seat, lastLine: number | null): C
   board.lines = board.lines.filter((l) => !gone.has(l.id));
   for (const id of corners) board.points[id].alive = false;
   return result;
-}
-
-/** A position fingerprint (lines, live points, whose turn) for spotting repeats. */
-export function positionKey(board: Board, turn: Seat): string {
-  const lines = board.lines.map((l) => (l.a < l.b ? `${l.a}-${l.b}` : `${l.b}-${l.a}`)).sort();
-  const dead = board.points.filter((p) => !p.alive).map((p) => p.id);
-  return `${turn}|${dead.join(",")}|${lines.join(",")}`;
 }

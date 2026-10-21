@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BOARD_H, BOARD_W, checkLine, legalPartners, type Board, type Line, type Seat } from "@/lib/board";
+import { BOARD_H, BOARD_W, checkMove, legalPartners, type Board, type Line, type Seat } from "@/lib/board";
 import type { ClientToServerEvents } from "@/lib/socketEvents";
 import type { CircuitEvent, ClientPlayer, ClientRoom } from "@/lib/types";
 import { installAudioUnlock, isMuted, play, setMuted } from "@/lib/sound";
@@ -46,7 +46,7 @@ export default function GameBoard({ room, viewerId, act }: { room: ClientRoom; v
   const anim = latestEvent && latestEvent.seq > doneSeq ? latestEvent : null;
   useEffect(() => {
     if (!anim) return;
-    play(anim.points > 0 ? "complete" : "place");
+    play("complete");
     const t = setTimeout(() => setDoneSeq(anim.seq), ANIM_MS);
     return () => clearTimeout(t);
   }, [anim]);
@@ -63,7 +63,7 @@ export default function GameBoard({ room, viewerId, act }: { room: ClientRoom; v
     phase.current = room.phase;
   }, [room.phase]);
 
-  const partners = useMemo(() => (selected === null ? new Set<number>() : new Set(legalPartners(board, selected))), [board, selected]);
+  const partners = useMemo(() => (selected === null ? new Set<number>() : new Set(legalPartners(board, me?.seat ?? 0, selected))), [board, selected, me?.seat]);
 
   const canTouch = myTurn && !anim && !sending;
 
@@ -74,7 +74,7 @@ export default function GameBoard({ room, viewerId, act }: { room: ClientRoom; v
       setSelected(id === selected ? null : id);
       return;
     }
-    const check = checkLine(board, selected, id);
+    const check = checkMove(board, me?.seat ?? 0, selected, id);
     if (!check.ok) {
       // Tapping another point that can't be joined starts over from that point instead.
       setSelected(id);
@@ -237,9 +237,8 @@ function CircuitBanner({ event, player }: { event: CircuitEvent; player?: Client
           {event.cause === "opponent" ? `相手の線で${SEAT_NAME[event.seat]}の回路がつながった!` : `${SEAT_NAME[event.seat]} ${player?.name ?? ""}`}
         </p>
         <p className="text-2xl font-black" style={{ color, textShadow: `0 0 14px ${color}` }}>
-          通電! {event.points > 0 ? `+${event.points}点` : "0点"}
+          通電! +{event.points}点
         </p>
-        {event.points === 0 && <p className="text-xs text-white/50">三角形がない回路。最後の線だけ消える</p>}
       </div>
     </div>
   );
@@ -418,7 +417,7 @@ function GameOver({
         style={{ borderColor: draw ? "#ffffff44" : color, boxShadow: draw ? undefined : `0 0 40px ${color}55` }}
       >
         <p className="mb-1 text-xs text-white/50">
-          {room.endReason === "repeat" ? "同じ盤面がくり返されたので終了" : "引ける線がなくなったので終了"}
+          引ける線がなくなったので終了
         </p>
         <h2 className="mb-4 text-3xl font-black" style={{ color: draw ? "#e8edf7" : color, textShadow: draw ? undefined : `0 0 16px ${color}` }}>
           {draw ? "引き分け" : winner.id === viewerId ? "あなたの勝ち!" : `${winner.name} さんの勝ち`}
