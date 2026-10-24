@@ -116,7 +116,7 @@ export default function GameBoard({ room, viewerId, act }: { room: ClientRoom; v
           </button>
         )}
         <div className="hidden text-xs leading-relaxed text-white/40 lg:block">
-          <p>点をタップ → 結ぶ点をタップ → 「この線を引く」。</p>
+          <p>点をタップ → 結ぶ点をタップ → 「はい」。</p>
           <p>選んだ点から結べる点が明るく光ります。</p>
           <p className="mt-2">手数 {room.moves} / 残りの点 {board.points.filter((p) => p.alive && !p.term).length}</p>
         </div>
@@ -144,16 +144,7 @@ export default function GameBoard({ room, viewerId, act }: { room: ClientRoom; v
         />
         {anim && <CircuitBanner event={anim} player={room.players.find((p) => p.id === anim.playerId)} />}
         <div className="mt-3 flex min-h-11 items-center justify-center gap-2">
-          {target !== null ? (
-            <>
-              <button className={ghostBtn} onClick={cancelLine}>
-                やめる
-              </button>
-              <button className={primaryBtn} onClick={confirmLine} disabled={sending}>
-                この線を引く
-              </button>
-            </>
-          ) : message ? (
+          {message ? (
             <p className="text-center text-sm text-red-300">{message}</p>
           ) : selected !== null ? (
             <p className="text-center text-sm text-white/50">結ぶ点をタップ(光っている点と結べます)</p>
@@ -163,9 +154,38 @@ export default function GameBoard({ room, viewerId, act }: { room: ClientRoom; v
         </div>
       </div>
 
+      {target !== null && <ConfirmLine seat={me?.seat ?? 0} sending={sending} onYes={confirmLine} onNo={cancelLine} />}
+
       {room.phase === "gameover" && !anim && (
         <GameOver room={room} viewerId={viewerId} winners={winners} act={act} />
       )}
+    </div>
+  );
+}
+
+/**
+ * はい/いいえ in the middle of the screen, so it is always in view on tablets and phones.
+ * The backdrop is light and the board stays visible, so the dashed line can still be checked.
+ */
+function ConfirmLine({ seat, sending, onYes, onNo }: { seat: Seat; sending: boolean; onYes: () => void; onNo: () => void }) {
+  const color = SEAT_COLOR[seat];
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/25 px-4" role="dialog" aria-modal="true" onClick={onNo}>
+      <div
+        className="tr-pop w-full max-w-xs rounded-2xl border bg-panel/95 p-5 text-center backdrop-blur"
+        style={{ borderColor: color, boxShadow: `0 0 30px ${color}44` }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="mb-4 text-lg font-bold">この線を引きますか?</p>
+        <div className="flex gap-3">
+          <button className={`${ghostBtn} flex-1 py-3 text-base`} onClick={onNo}>
+            いいえ
+          </button>
+          <button className={`${primaryBtn} flex-1 py-3 text-base`} onClick={onYes} disabled={sending}>
+            はい
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
